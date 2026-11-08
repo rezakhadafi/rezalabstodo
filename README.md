@@ -38,6 +38,22 @@ npm start        # berjalan di http://localhost:3000
 
 Semua tugas tersimpan permanen di database SQLite pada file **`data/todo.db`**. File ini **dibuat otomatis** saat server pertama kali menerima request API — tidak perlu setup manual. File `.db` sengaja tidak di-commit ke repo (lihat `.gitignore`).
 
+### Mengatur lokasi database (`SQLITE_PATH`)
+
+Lokasi file database bisa diatur lewat environment variable **`SQLITE_PATH`**:
+
+```bash
+SQLITE_PATH=/tmp/uji-todo.db npm start
+```
+
+Aturan penentuan lokasi (di `lib/db.js`):
+
+1. Kalau `SQLITE_PATH` diset, pakai path itu.
+2. Kalau tidak, dan berjalan di **Vercel** (Vercel otomatis men-set `VERCEL=1`), pakai **`/tmp/todo.db`** — filesystem deployment Vercel read-only kecuali `/tmp`, jadi folder `data/` tidak bisa dibuat di sana.
+3. Kalau tidak, pakai `data/todo.db` (perilaku lokal, tidak berubah).
+
+> **Data di `/tmp` bersifat sementara (ephemeral):** di Vercel, isi `/tmp` bisa hilang saat instance serverless didaur ulang. Jadi deploy Vercel membuat aplikasi jalan tanpa error, tapi tugas bisa hilang sewaktu-waktu. Untuk penyimpanan yang tahan lama di cloud, gunakan database terkelola (lihat catatan di bawah).
+
 Skema tabel `tasks`:
 
 | Kolom | Tipe | Keterangan |
@@ -58,4 +74,4 @@ Akses database hanya lewat API routes (`app/api/tasks/route.js` dan `app/api/tas
 SQLite menyimpan data di file lokal, jadi **butuh disk yang persisten**:
 
 - **Lokal / VPS / server sendiri:** cocok — file `data/todo.db` bertahan selama disk tidak dihapus.
-- **Hosting serverless (mis. Vercel):** file yang ditulis saat runtime **tidak persisten** antar-invocation dan bisa hilang saat redeploy. Jadi kalau di-deploy ke Vercel, tugas bisa hilang. Untuk penyimpanan yang tahan lama di cloud, jalankan aplikasi ini di VPS/server, atau ganti lapisan penyimpanan dengan database terkelola (mis. Turso / Postgres).
+- **Hosting serverless (mis. Vercel):** aplikasi sudah disiapkan agar jalan — saat `VERCEL=1`, database otomatis memakai `/tmp/todo.db` karena filesystem deployment read-only kecuali `/tmp`. Tapi file di `/tmp` **tidak persisten** antar-invocation dan bisa hilang saat instance didaur ulang atau redeploy. Jadi kalau di-deploy ke Vercel, tugas bisa hilang sewaktu-waktu. Untuk penyimpanan yang tahan lama di cloud, jalankan aplikasi ini di VPS/server, atau ganti lapisan penyimpanan dengan database terkelola (mis. Turso / Postgres / Vercel Postgres).

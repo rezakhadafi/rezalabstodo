@@ -1,0 +1,20 @@
+# Dependensi
+node_modules/
+
+# Build Next.js
+.next/
+out/
+
+# Database SQLite (dibuat otomatis saat runtime, jangan di-commit)
+data/*.db
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environment lokal
+.env*.local
+
+# Log & sistem
+*.log
+.DS_Store

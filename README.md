@@ -13,6 +13,7 @@ Aplikasi web sederhana untuk mengelola tugas harian, dibuat dengan **Next.js (Ap
 - Banner untuk memindahkan tugas kemarin yang belum selesai ke hari ini
 - Ring progres harian + confetti saat semua tugas selesai
 - PWA: bisa dipasang di layar utama (manifest + service worker sederhana)
+- **Halaman login** — halaman utama dan API tugas terlindungi; akun pemilik dibuat sekali di awal (lihat bagian Login di bawah)
 
 > **Catatan ikon PWA:** manifest memakai `icon.svg`. Ikon PNG 192/512 (yang
 > disyaratkan sebagian browser untuk instalasi penuh) tidak disertakan di repo
@@ -33,6 +34,18 @@ Untuk produksi:
 npm run build
 npm start        # berjalan di http://localhost:3000
 ```
+
+## Login
+
+Aplikasi ini memakai **satu akun pemilik** — tidak ada registrasi publik dan tidak ada fitur lupa password.
+
+- **Pertama kali dibuka**, halaman `/login` menampilkan form **Buat Akun**: isi username (3–30 karakter: huruf kecil, angka, titik, atau garis bawah) dan password (minimal 8 karakter), lalu akun langsung dibuat dan kamu masuk.
+- **Setelah akun ada**, `/login` hanya menampilkan form login biasa.
+- Password di-hash dengan **scrypt** (`node:crypto`, garam acak per pengguna) — tidak pernah disimpan polos.
+- Sesi berupa token acak di cookie `httpOnly` (`todo_session`, berlaku 30 hari); tombol **Keluar** di header menghapus sesi.
+- Halaman utama (`/`) dan semua endpoint `/api/tasks/*` menolak akses tanpa sesi yang valid (middleware mengarahkan ke `/login`; API menjawab 401).
+
+> **Perhatian:** siapa pun yang membuka alamat aplikasi pertama kali bisa membuat akun pemilik — jadi buat akunmu **segera setelah deploy**, sebelum membagikan URL-nya. Di Vercel, akun tersimpan di file SQLite yang sama (`/tmp/todo.db`) dan ikut hilang bila instance didaur ulang — sama seperti tugas. Untuk penyimpanan tahan lama, gunakan database terkelola (lihat catatan di bawah).
 
 ## Penyimpanan (SQLite)
 

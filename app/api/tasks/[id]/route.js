@@ -1,14 +1,26 @@
 import { NextResponse } from "next/server";
 import { getDb, isValidDate, isValidPriority, toTask } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 function getId(params) {
   const id = Number(params.id);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+function requireAuth(request) {
+  const user = getSessionUser(request);
+  if (!user) {
+    return NextResponse.json({ error: "Silakan login dulu." }, { status: 401 });
+  }
+  return null;
+}
+
 // PATCH /api/tasks/:id — ubah tugas.
 // Body boleh berisi: { title?, priority?, completed?, task_date? }
 export async function PATCH(request, { params }) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   const id = getId(params);
   if (id === null) {
     return NextResponse.json({ error: "ID tugas tidak valid." }, { status: 400 });
@@ -93,6 +105,9 @@ export async function PATCH(request, { params }) {
 
 // DELETE /api/tasks/:id — hapus tugas.
 export async function DELETE(request, { params }) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   const id = getId(params);
   if (id === null) {
     return NextResponse.json({ error: "ID tugas tidak valid." }, { status: 400 });

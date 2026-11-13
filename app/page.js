@@ -71,6 +71,11 @@ export default function Home() {
   const fetchTasks = useCallback(async (key) => {
     try {
       const res = await fetch(`/api/tasks?date=${key}`);
+      if (res.status === 401) {
+        // Sesi habis / belum login — kembali ke halaman login.
+        window.location.href = "/login";
+        return [];
+      }
       const data = await res.json();
       return data.tasks || [];
     } catch {
@@ -239,6 +244,15 @@ export default function Home() {
     }
   }
 
+  async function handleLogout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Lanjut ke halaman login walau request logout gagal.
+    }
+    window.location.href = "/login";
+  }
+
   async function handleCarryOver() {
     if (yesterdayOpen.length === 0) return;
     try {
@@ -290,6 +304,9 @@ export default function Home() {
               {allDone && totalCount > 0 ? " — semua beres!" : ""}
             </p>
           </div>
+          <button className="logout-btn" onClick={handleLogout}>
+            Keluar
+          </button>
         </div>
       </header>
 

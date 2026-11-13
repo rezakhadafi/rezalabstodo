@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
 import { getDb, isValidDate, isValidPriority, toTask } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
+
+// Semua endpoint tugas butuh login.
+function requireAuth(request) {
+  const user = getSessionUser(request);
+  if (!user) {
+    return NextResponse.json({ error: "Silakan login dulu." }, { status: 401 });
+  }
+  return null;
+}
 
 // GET /api/tasks?date=YYYY-MM-DD — daftar tugas pada tanggal tersebut.
 export async function GET(request) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
 
@@ -27,6 +39,9 @@ export async function GET(request) {
 // POST /api/tasks — tambah tugas baru.
 // Body: { title, priority?, task_date? }
 export async function POST(request) {
+  const authError = requireAuth(request);
+  if (authError) return authError;
+
   let body;
   try {
     body = await request.json();

@@ -7,8 +7,8 @@ function getId(params) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function requireAuth(request) {
-  const user = getSessionUser(request);
+async function requireAuth(request) {
+  const user = await getSessionUser(request);
   if (!user) {
     return NextResponse.json({ error: "Silakan login dulu." }, { status: 401 });
   }
@@ -18,7 +18,7 @@ function requireAuth(request) {
 // PATCH /api/tasks/:id — ubah tugas.
 // Body boleh berisi: { title?, priority?, completed?, task_date? }
 export async function PATCH(request, { params }) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const id = getId(params);
@@ -33,8 +33,12 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "Body harus berupa JSON." }, { status: 400 });
   }
 
-  const db = getDb();
-  const existing = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id);
+  const db = await getDb();
+  const found = await db.execute({
+    sql: "SELECT * FROM tasks WHERE id = ?",
+    args: [id],
+  });
+  const existing = found.rows[0];
   if (!existing) {
     return NextResponse.json({ error: "Tugas tidak ditemukan." }, { status: 404 });
   }
@@ -93,19 +97,21 @@ export async function PATCH(request, { params }) {
   const now = new Date().toISOString();
   const sets = Object.keys(updates).map((key) => `${key} = ?`).join(", ");
   const values = Object.values(updates);
-  db.prepare(`UPDATE tasks SET ${sets}, updated_at = ? WHERE id = ?`).run(
-    ...values,
-    now,
-    id
-  );
+  await db.execute({
+    sql: `UPDATE tasks SET ${sets}, updated_at = ? WHERE id = ?`,
+    args: [...values, now, id],
+  });
 
-  const row = db.prepare("SELECT * FROM tasks WHERE id = ?").get(id);
-  return NextResponse.json({ task: toTask(row) });
+  const row = await db.execute({
+    sql: "SELECT * FROM tasks WHERE id = ?",
+    args: [id],
+  });
+  return NextResponse.json({ task: toTask(row.rows[0]) });
 }
 
 // DELETE /api/tasks/:id — hapus tugas.
 export async function DELETE(request, { params }) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   const id = getId(params);
@@ -113,8 +119,11 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: "ID tugas tidak valid." }, { status: 400 });
   }
 
-  const db = getDb();
-  const result = db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
+  const db = await getDb();
+  const result = await db.execute({
+    sql: "DELETE FROM tasks WHERE id = ?",
+    args: [id],
+  });
   if (result.changes === 0) {
     return NextResponse.json({ error: "Tugas tidak ditemukan." }, { status: 404 });
   }

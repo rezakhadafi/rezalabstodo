@@ -47,6 +47,23 @@ Aplikasi ini memakai **satu akun pemilik** — tidak ada registrasi publik dan t
 
 > **Perhatian:** siapa pun yang membuka alamat aplikasi pertama kali bisa membuat akun pemilik — jadi buat akunmu **segera setelah deploy**, sebelum membagikan URL-nya. Di Vercel, akun tersimpan di file SQLite yang sama (`/tmp/todo.db`) dan ikut hilang bila instance didaur ulang — sama seperti tugas. Untuk penyimpanan tahan lama, gunakan database terkelola (lihat catatan di bawah).
 
+## Turso (database bersama untuk Vercel)
+
+Di Vercel, tiap instance serverless punya `/tmp` sendiri — akun & tugas yang dibuat di satu instance tidak terlihat di instance lain. Gejalanya: baru berhasil login, lalu langsung dilempar kembali ke halaman login (terbukti 13 Nov 2026: 1 dari 20 request paralel ke `/api/auth/me` menjawab `setupNeeded:true`, sisanya `false`). Karena itu, deployment Vercel memakai **Turso** (SQLite terkelola, libSQL) sebagai database bersama.
+
+Aktifkan dengan 2 environment variable (di Vercel: Project → Settings → Environment Variables, lalu redeploy):
+
+- `TURSO_DATABASE_URL` — mis. `libsql://namadb-username.turso.io`
+- `TURSO_AUTH_TOKEN` — token dari dashboard Turso
+
+Bila kedua env itu TIDAK diset, aplikasi tetap memakai SQLite lokal (`data/todo.db` / `SQLITE_PATH` / `/tmp` di Vercel) — cocok untuk `npm run dev` di laptop. Skema tabel tidak berubah; data lokal tidak ikut pindah ke Turso (database Turso mulai kosong — buat akun sekali lagi setelah migrasi).
+
+Untuk menguji jalur Turso secara lokal tanpa akun Turso, arahkan URL ke file lokal (token boleh sembarang):
+
+```bash
+TURSO_DATABASE_URL=file:/tmp/uji-turso.db TURSO_AUTH_TOKEN=dummy npm start
+```
+
 ## Penyimpanan (SQLite)
 
 Semua tugas tersimpan permanen di database SQLite pada file **`data/todo.db`**. File ini **dibuat otomatis** saat server pertama kali menerima request API — tidak perlu setup manual. File `.db` sengaja tidak di-commit ke repo (lihat `.gitignore`).

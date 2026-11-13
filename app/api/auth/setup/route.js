@@ -13,7 +13,7 @@ import {
 // ditutup (403) dan pembuatan akun baru tidak dimungkinkan lewat API.
 // Body: { username, password, confirm }
 export async function POST(request) {
-  if (countUsers() > 0) {
+  if ((await countUsers()) > 0) {
     return NextResponse.json(
       { error: "Akun sudah dibuat. Silakan login." },
       { status: 403 }
@@ -54,8 +54,8 @@ export async function POST(request) {
     );
   }
 
-  const user = createUser(username, password);
-  const session = createSession(user.id);
+  const user = await createUser(username, password);
+  const session = await createSession(user.id);
   const res = NextResponse.json(
     { user: { username: user.username } },
     { status: 201 }

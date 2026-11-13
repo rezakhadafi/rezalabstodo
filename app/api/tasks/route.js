@@ -3,8 +3,8 @@ import { getDb, isValidDate, isValidPriority, toTask } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 
 // Semua endpoint tugas butuh login.
-function requireAuth(request) {
-  const user = getSessionUser(request);
+async function requireAuth(request) {
+  const user = await getSessionUser(request);
   if (!user) {
     return NextResponse.json({ error: "Silakan login dulu." }, { status: 401 });
   }
@@ -13,8 +13,9 @@ function requireAuth(request) {
 
 // GET /api/tasks?date=YYYY-MM-DD — daftar tugas pada tanggal tersebut.
 export async function GET(request) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
+
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
 
@@ -26,20 +27,19 @@ export async function GET(request) {
   }
 
   const taskDate = date || new Date().toISOString().slice(0, 10);
-  const db = getDb();
-  const rows = db
-    .prepare(
-      "SELECT * FROM tasks WHERE task_date = ? ORDER BY completed ASC, created_at DESC"
-    )
-    .all(taskDate);
+  const db = await getDb();
+  const res = await db.execute({
+    sql: "SELECT * FROM tasks WHERE task_date = ? ORDER BY completed ASC, created_at DESC",
+    args: [taskDate],
+  });
 
-  return NextResponse.json({ tasks: rows.map(toTask) });
+  return NextResponse.json({ tasks: res.rows.map(toTask) });
 }
 
 // POST /api/tasks — tambah tugas baru.
 // Body: { title, priority?, task_date? }
 export async function POST(request) {
-  const authError = requireAuth(request);
+  const authError = await requireAuth(request);
   if (authError) return authError;
 
   let body;
@@ -77,13 +77,15 @@ export async function POST(request) {
   }
 
   const now = new Date().toISOString();
-  const db = getDb();
-  const result = db
-    .prepare(
-      "INSERT INTO tasks (title, priority, completed, completed_at, task_date, created_at, updated_at) VALUES (?, ?, 0, NULL, ?, ?, ?)"
-    )
-    .run(title, priority, taskDate, now, now);
+  const db = await getDb();
+  const inserted = await db.execute({
+    sql: "INSERT INTO tasks (title, priority, completed, completed_at, task_date, created_at, updated_at) VALUES (?, ?, 0, NULL, ?, ?, ?)",
+    args: [title, priority, taskDate, now, now],
+  });
 
-  const row = db.prepare("SELECT * FROM tasks WHERE id = ?").get(result.lastInsertRowid);
-  return NextResponse.json({ task: toTask(row) }, { status: 201 });
+  const row = await db.execute({
+    sql: "SELECT * FROM tasks WHERE id = ?",
+    args: [Number(inserted.lastInsertRowid)],
+  });
+  return NextResponse.json({ task: toTask(row.rows[0]) }, { status: 201 });
 }
